@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<dbconf>
+	<dbms>mysql</dbms>
+	<host>localhost</host>
+	<username>root</username>
+	<password>root</password>
+	<database>chatdb</database>
+</dbconf>
