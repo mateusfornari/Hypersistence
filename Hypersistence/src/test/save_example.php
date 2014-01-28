@@ -2,13 +2,15 @@
 require_once '../hypersistence/DB.php';
 require_once '../hypersistence/Hypersistence.php';
 require_once './Person.php';
-
-
-$b = new Book(1);
-$b->load();
-var_dump($b->getAuthor()->getName());
+require_once './Book.php';
 
 $p = new Person(1);
 $p->load();
-var_dump($p);
+
+$b = new Book();
+$b->setAuthor($p);
+$b->setTitle('My Book');
+$b->save();
+
+DB::getDBConnection()->commit();
 ?>
