@@ -18,7 +18,7 @@ class DB extends PDO{
 		if(!is_null(self::$conn) && is_a(self::$conn, 'DB')){
 			return self::$conn;
 		}else{
-			$conf = simplexml_load_file('dbconf.xml');
+			$conf = simplexml_load_file(__DIR__.'/dbconf.xml');
 			self::$conn = new DB("$conf->dbms:host=$conf->host;dbname=$conf->database", $conf->username, $conf->password, array(PDO::ATTR_PERSISTENT => true, PDO::ATTR_STATEMENT_CLASS => array('ResultSet'), PDO::ATTR_PERSISTENT => false));
 			if(!self::$conn->inTransaction())
 				self::$conn->beginTransaction();

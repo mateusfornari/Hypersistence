@@ -21,12 +21,16 @@ class HypersistenceLazyLoad {
 		return $obj->$name;
 	}
 	public function __set($name, $value) {
-		$obj = new $this->className();
-		$objPkVar = &$obj->getPkVar();
-		$objPkVar = $this->value;
-		$obj->load();
-		$this->var = &$obj;
-		$obj->$name = $value;
+		if(!$this->list){
+			$obj = new $this->className();
+			$objPkVar = &$obj->getPkVar();
+			$objPkVar = $this->value;
+			$obj->load();
+			$this->var = &$obj;
+			$obj->$name = $value;
+		}else{
+			$this->var = $value;
+		}
 	}
 	
 	public function __call($name, $arguments) {
@@ -83,6 +87,28 @@ class HypersistenceEntity {
 		$this->fk = $fk;
 	}
 
+	
+	/**
+	 * Binds a property to its referred database column as primary key.
+	 * @param mixed $var The property reference.
+	 * @param string $dbColumn The name of referred database column.
+	 * @throws Exception Throws an exception if the passed class does not exist.
+	 */
+	public function bindPk(&$var, $dbColumn){
+		$this->bindVar($var, $dbColumn, true);
+	}
+	
+	/**
+	 * Binds a property to its referred database column if it is an object.
+	 * @param mixed $var The property reference.
+	 * @param string $dbColumn The name of referred database column.
+	 * @param string $className The class name of the object.
+	 * @throws Exception Throws an exception if the passed class does not exist.
+	 */
+	public function bindManyToOne(&$var, $dbColumn, $className){
+		$this->bindVar($var, $dbColumn, false, $className);
+	}
+	
 	/**
 	 * Binds a property to its referred database column.
 	 * @param mixed $var The property reference.
@@ -91,8 +117,7 @@ class HypersistenceEntity {
 	 * @param string $className If the value of the property is an object pass the class name.
 	 * @throws Exception Throws an exception if the passed class does not exist.
 	 */
-	public function bindVar(&$var, $dbColumn, $isPrimaryKey = false, $className = null, $list = false) {
-		
+	public function bindVar(&$var, $dbColumn, $isPrimaryKey = false, $className = null) {
 		$index = sizeof($this->vars);
 		if (!is_null($className)) {
 			if (!class_exists($className)) {
@@ -100,7 +125,7 @@ class HypersistenceEntity {
 			}else{
 				$refClass = new ReflectionClass($className);
 				if($refClass->isSubclassOf('Hypersistence')){
-					$var = new HypersistenceLazyLoad($var, $className, $list);
+					$var = new HypersistenceLazyLoad($var, $className);
 				}
 			}
 		}
@@ -108,7 +133,6 @@ class HypersistenceEntity {
 		$this->vars[$index]['col'] = $dbColumn;
 		$this->vars[$index]['pk'] = $isPrimaryKey;
 		$this->vars[$index]['class'] = $className;
-		$this->vars[$index]['list'] = $list;
 	}
 
 	public function getVars() {
@@ -186,6 +210,11 @@ class Hypersistence {
 		$this->entities = $orderedEntities;
 	}
 	
+	public function getEntities() {
+		return $this->entities;
+	}
+
+		
 	/**
 	 * Loads data from database and populates the object.
 	 * @return boolean
@@ -209,7 +238,8 @@ class Hypersistence {
 			
 			$vars = $e->getVars();
 			foreach ($vars as $v){
-				$fields[] = $e->getTable().'.'.$v['col'].' AS '.$e->getTable().'_'.$v['col'];
+				if(!is_null($v['col']))
+					$fields[] = $e->getTable().'.'.$v['col'].' AS '.$e->getTable().'_'.$v['col'];
 			}
 		}
 		
@@ -221,11 +251,13 @@ class Hypersistence {
 				foreach ($this->entities as $e){
 					$vars = $e->getVars();
 					foreach ($vars as $v){
+						if(!is_null($v['col'])){
 						$column = $e->getTable().'_'.$v['col'];
-						if(!is_null($v['class']) && is_a($v['var'], 'HypersistenceLazyLoad')){
-							$v['var']->setHypersistenceLazyLoadValue($result->$column);
-						}else{
-							$v['var'] = $result->$column;
+							if(!is_null($v['class']) && is_a($v['var'], 'HypersistenceLazyLoad')){
+								$v['var']->setHypersistenceLazyLoadValue($result->$column);
+							}else{
+								$v['var'] = $result->$column;
+							}
 						}
 					}
 				}

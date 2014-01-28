@@ -4,5 +4,5 @@
 	<host>localhost</host>
 	<username>root</username>
 	<password>root</password>
-	<database>chatdb</database>
+	<database>test</database>
 </dbconf>
