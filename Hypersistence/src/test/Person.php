@@ -42,4 +42,24 @@ class Person extends Hypersistence{
 	
 }
 
+class Student extends Person{
+	private $number;
+	
+	function __construct($id = null, $name = null, $email = null, $number = null) {
+		$this->number = $number;
+		parent::__construct($id, $name, $email);
+		$e = $this->bindEntity('Student', 'student', 'id');
+		$e->bindPk($this->id, 'id');
+		$e->bindVar($this->number, 'number');
+	}
+	public function getNumber() {
+		return $this->number;
+	}
+
+	public function setNumber($number) {
+		$this->number = $number;
+	}
+
+
+}
 ?>

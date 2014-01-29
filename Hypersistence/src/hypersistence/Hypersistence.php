@@ -148,11 +148,12 @@ class HypersistenceEntity {
 	}
 
 	public function &getPkVar() {
+		$var = null;
 		foreach ($this->vars as $v) {
 			if ($v['pk'])
 				return $v['var'];
 		}
-		return false;
+		return $var;
 	}
 	
 }
@@ -268,6 +269,39 @@ class Hypersistence {
 	}
 	
 	/**
+	 * Delete the object from database.
+	 * @return boolean
+	 */
+	public function delete() {
+		$this->orderEntities();
+		$joins = array();
+		$filter = array();
+		$bounds = array();
+		$fields = array();
+		$count = sizeof($this->entities);
+		for($i = 0; $i < $count; $i++){
+			$e = $this->entities[$i];
+			$joins[] = $e->getTable();
+			if($i == 0){
+				$filter[] = $e->getTable().'.'.$e->getPkColumn().' = :'.$e->getTable().'_'.$e->getPkColumn();
+				$bounds[':'.$e->getTable().'_'.$e->getPkColumn()] = $e->getPkVar();
+			}
+			if($count > 1 && $i < $count - 1)
+				$filter[] = $e->getTable().'.'.$e->getFk().' = '.$this->entities[$i + 1]->getTable().'.'.$this->entities[$i + 1]->getPkColumn();
+			
+		}
+		
+		$sql = 'DELETE '.implode(', ', $joins).' FROM '.implode(', ', $joins).' WHERE '.implode(' AND ', $filter);
+		
+		if($stmt = $this->conn->prepare($sql)){
+			if($stmt->execute($bounds)){
+				return true;
+			}
+		}
+		return false;
+	}
+	
+	/**
 	 * Saves object data in database.
 	 * @return boolean
 	 */
@@ -303,7 +337,6 @@ class Hypersistence {
 				}
 				
 				$sql = 'INSERT INTO '.$e->getTable().' ('.implode(', ', $fields).') VALUES('.  implode(', ', $values).')';
-				
 				if($stmt = $this->conn->prepare($sql)){
 					if($stmt->execute($bounds)){
 						$pk = &$e->getPkVar();
