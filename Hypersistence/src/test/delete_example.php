@@ -9,5 +9,5 @@ $s->load();
 
 $s->delete();
 
-DB::getDBConnection()->commit();
+Hypersistence::commit();
 ?>

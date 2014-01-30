@@ -21,5 +21,5 @@ $s->setName('Mateus Fornari');
 $s->setNumber(123456);
 $s->save();
 
-DB::getDBConnection()->commit();
+Hypersistence::commit();
 ?>

@@ -180,7 +180,7 @@ class Hypersistence {
 	 * @param string $fk If the entity inherits another pass the name of foreign key column.
 	 */
 	public function bindEntity($className, $tableName, $foreignKey = null) {
-		$this->conn = DB::getDBConnection();
+		$this->conn = &DB::getDBConnection();
 		$this->entities[$className] = new HypersistenceEntity($className, $tableName, $foreignKey);
 		return $this->entities[$className];
 	}
@@ -442,6 +442,14 @@ class Hypersistence {
 			}
 			return false;
 		}
+	}
+	
+	public static function commit(){
+		return DB::getDBConnection()->commit();
+	}
+	
+	public static function rollBack(){
+		return DB::getDBConnection()->rollBack();
 	}
 
 }

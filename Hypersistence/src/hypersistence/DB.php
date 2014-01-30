@@ -14,7 +14,7 @@ class DB extends PDO{
 	 * 
 	 * @return DB
 	 */
-	public static function getDBConnection(){
+	public static function &getDBConnection(){
 		if(!is_null(self::$conn) && is_a(self::$conn, 'DB')){
 			return self::$conn;
 		}else{
@@ -24,6 +24,10 @@ class DB extends PDO{
 				self::$conn->beginTransaction();
 			return self::$conn;
 		}
+	}
+	
+	public static function destroy(){
+		self::$conn = null;
 	}
 }
 
