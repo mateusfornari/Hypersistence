@@ -42,6 +42,18 @@ class HypersistenceLazyLoad {
 		return $obj->$name($arguments);
 	}
 	
+	public function __toString() {
+		if(method_exists($this->className, '__toString')){
+			$obj = new $this->className();
+			$objPkVar = &$obj->getPkVar();
+			$objPkVar = $this->value;
+			$obj->load();
+			$this->var = &$obj;
+			return $obj->__toString();
+		}
+		return 'Object of type '.$this->className;
+	}
+	
 	public function setHypersistenceLazyLoadValue($value){
 		$this->value = $value;
 	}

@@ -40,6 +40,9 @@ class Person extends Hypersistence{
 		$this->email = $email;
 	}
 	
+	public function __toString() {
+		return $this->name;
+	}
 }
 
 class Student extends Person{

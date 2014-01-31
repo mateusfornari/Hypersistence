@@ -7,7 +7,7 @@ require_once './Book.php';
 
 $b = new Book(3);
 $b->load();
-var_dump($b->getAuthor()->getName());
+echo $b->getAuthor()."\n";
 
 $p = new Person(3);
 $p->load();
