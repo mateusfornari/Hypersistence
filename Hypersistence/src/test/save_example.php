@@ -9,6 +9,7 @@ $p = new Person();
 $p->setName('Mateus Fornari');
 $p->setEmail('mateusfornari@gmail.com');
 $p->save();
+echo $p->getId()."\n";
 
 $b = new Book();
 $b->setAuthor($p);
@@ -21,11 +22,13 @@ $s->setEmail('mateusfornari@gmail.com');
 $s->setName('Mateus Fornari');
 $s->setNumber(123456);
 $s->save();
+echo $s->getId()."\n";
 
 $c = new Course();
 $c->setDescription('PHP Programming');
 $c->save();
 
+$s->addManyToManyRelationTo($c, 'student_course');
 
 Hypersistence::commit();
 ?>

@@ -208,7 +208,10 @@ class HypersistenceEntity {
 		$this->vars[$index]['pk'] = $isPrimaryKey;
 		$this->vars[$index]['class'] = $className;
 		$this->vars[$index]['list'] = $isList;
-		
+		if(!is_null($relationTable) && !is_null($dbColumnOther)){
+			$this->vars[$index]['relTable'] = $relationTable;
+			$this->vars[$index]['colOther'] = $dbColumnOther;
+		}
 		
 	}
 
@@ -418,9 +421,10 @@ class Hypersistence {
 				if($stmt = $this->conn->prepare($sql)){
 					if($stmt->execute($bounds)){
 						$pk = &$e->getPkVar();
-						$pk = $this->conn->lastInsertId();
-						
-						unset($pk);
+						if(is_null($pk)){
+							$pk = $this->conn->lastInsertId();
+							unset($pk);
+						}
 					}else{
 						return false;
 					}
@@ -458,6 +462,24 @@ class Hypersistence {
 			}
 		}
 		return true;
+	}
+	
+	public function addManyToManyRelationTo(Hypersistence $object, $relationTable){
+		foreach ($this->entities as $e){
+			foreach ($e->getVars() as $v){
+				if(isset($v['relTable']) && $v['relTable'] == $relationTable){
+					$bounds[':col'] = $this->getPkVar();
+					$bounds[':colOther'] = $object->getPkVar();
+					$sql = "INSERT INTO $relationTable ($v[col], $v[colOther]) VALUES(:col, :colOther)";
+					
+					if($stmt = $this->conn->prepare($sql)){
+						return $stmt->execute($bounds);
+					}
+				}
+			}
+		}
+		throw new Exception('No many to many bounds found!');
+		return false;
 	}
 
 	/**
