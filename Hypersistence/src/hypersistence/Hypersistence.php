@@ -64,15 +64,17 @@ class HypersistenceLazyLoad {
 
 class HypersistenceEntity {
 
-	private $object;
+	private $className;
 	private $table;
 	private $fk;
 	private $vars = array();
+	private $object;
 
-	public function __construct($ClassName, $table, $fk = null) {
-		$this->object = $ClassName;
+	public function __construct($ClassName, $table, $fk = null, &$object = null) {
+		$this->className = $ClassName;
 		$this->table = $table;
 		$this->fk = $fk;
+		$this->object = &$object;
 	}
 
 	public function getObject() {
@@ -98,8 +100,15 @@ class HypersistenceEntity {
 	public function setFk($fk) {
 		$this->fk = $fk;
 	}
+	public function getClassName() {
+		return $this->className;
+	}
 
-	
+	public function setClassName($className) {
+		$this->className = $className;
+	}
+
+		
 	/**
 	 * Binds a property to its referred database column as primary key.
 	 * @param mixed $var The property reference.
@@ -120,6 +129,28 @@ class HypersistenceEntity {
 	public function bindManyToOne(&$var, $dbColumn, $className){
 		$this->bindVar($var, $dbColumn, false, $className);
 	}
+	/**
+	 * Binds a property to its referred database column if it is an one to many relation.
+	 * @param mixed $var The property reference.
+	 * @param string $dbColumn The name of referred database column.
+	 * @param string $className The class name of the object.
+	 * @throws Exception Throws an exception if the passed class does not exist.
+	 */
+	public function bindOneToMany(&$var, $dbColumn, $className){
+		$this->bindVar($var, $dbColumn, false, $className, true);
+	}
+	
+	/**
+	 * Binds a property to its referred database column if it is a many to many relation.
+	 * @param mixed $var The property reference.
+	 * @param string $dbColumn The name of referred database column.
+	 * @param string $className The class name of the object.
+	 * @throws Exception Throws an exception if the passed class does not exist.
+	 */
+	public function bindManyToMany(&$var, $relationTable, $dbColumnThis, $dbColumnOther, $className){
+		$this->bindVar($var, $dbColumnThis, false, $className, true, $relationTable, $dbColumnOther);
+	}
+	
 	
 	/**
 	 * Binds a property to its referred database column.
@@ -127,24 +158,58 @@ class HypersistenceEntity {
 	 * @param string $dbColumn The name of referred database column.
 	 * @param boolean $isPrimaryKey Pass true if it is the primary key of database table.
 	 * @param string $className If the value of the property is an object pass the class name.
+	 * @param boolean $isList TRUE if the value of the property is a list of objects.
 	 * @throws Exception Throws an exception if the passed class does not exist.
 	 */
-	public function bindVar(&$var, $dbColumn, $isPrimaryKey = false, $className = null) {
+	public function bindVar(&$var, $dbColumn, $isPrimaryKey = false, $className = null, $isList = false, $relationTable = null, $dbColumnOther = null) {
 		$index = sizeof($this->vars);
 		if (!is_null($className)) {
 			if (!class_exists($className)) {
 				throw new Exception("The class $className is not defined!");
 			}else{
-				$refClass = new ReflectionClass($className);
-				if($refClass->isSubclassOf('Hypersistence')){
-					$var = new HypersistenceLazyLoad($var, $className);
-				}
+					$refClass = new ReflectionClass($className);
+					if($refClass->isSubclassOf('Hypersistence')){
+						if(!$isList){
+							$var = new HypersistenceLazyLoad($var, $className);
+						}else{
+							$obj = new $className();
+							foreach($obj->getEntities() as $e){
+								foreach ($e->vars as $v){
+									if($v['col'] == $dbColumn){
+										$v['var'] = $this->object;
+										break;
+									}
+								}
+							}
+							if(!is_null($relationTable) && !is_null($dbColumnOther)){
+								$entities = $obj->getEntities();
+								foreach ($entities as $e){
+									if($e->className == $className){
+										$vars = &$e->vars;
+										break;
+									}
+								}
+								$i = count($vars);
+								$vars[$i]['var'] = $this->object;
+								$vars[$i]['col'] = $dbColumn;
+								$vars[$i]['pk'] = $isPrimaryKey;
+								$vars[$i]['class'] = $className;
+								$vars[$i]['list'] = $isList;
+								$vars[$i]['relTable'] = $relationTable;
+								$vars[$i]['colOther'] = $dbColumnOther;
+							}
+							$var = $obj->search();
+						}
+					}
 			}
 		}
 		$this->vars[$index]['var'] = &$var;
 		$this->vars[$index]['col'] = $dbColumn;
 		$this->vars[$index]['pk'] = $isPrimaryKey;
 		$this->vars[$index]['class'] = $className;
+		$this->vars[$index]['list'] = $isList;
+		
+		
 	}
 
 	public function getVars() {
@@ -191,9 +256,9 @@ class Hypersistence {
 	 * @param string $tableName The name of referred table in database.
 	 * @param string $fk If the entity inherits another pass the name of foreign key column.
 	 */
-	public function bindEntity($className, $tableName, $foreignKey = null) {
+	protected function bindEntity($className, $tableName, $foreignKey = null) {
 		$this->conn = &DB::getDBConnection();
-		$this->entities[$className] = new HypersistenceEntity($className, $tableName, $foreignKey);
+		$this->entities[$className] = new HypersistenceEntity($className, $tableName, $foreignKey, $this);
 		return $this->entities[$className];
 	}
 
@@ -251,7 +316,7 @@ class Hypersistence {
 			
 			$vars = $e->getVars();
 			foreach ($vars as $v){
-				if(!is_null($v['col']))
+				if(!is_null($v['col']) && !$v['list'])
 					$fields[] = $e->getTable().'.'.$v['col'].' AS '.$e->getTable().'_'.$v['col'];
 			}
 		}
@@ -264,7 +329,7 @@ class Hypersistence {
 				foreach ($this->entities as $e){
 					$vars = $e->getVars();
 					foreach ($vars as $v){
-						if(!is_null($v['col'])){
+						if(!is_null($v['col']) && !$v['list']){
 						$column = $e->getTable().'_'.$v['col'];
 							if(!is_null($v['class']) && is_a($v['var'], 'HypersistenceLazyLoad')){
 								$v['var']->setHypersistenceLazyLoadValue($result->$column);
@@ -323,22 +388,22 @@ class Hypersistence {
 		
 		$lastEntity = null;
 		foreach ($entities as $e){
-			
 			$fields = array();
 			$values = array();
 			$bounds = array();
-			if(is_null($e->getPkVar())){
+			if(is_null($e->getPkVar()) || !$e->getObject()->load()){
 				$vars = $e->getVars();
 				foreach ($vars as $v){
-					if(!$v['pk']){
+					if(!$v['pk'] && !$v['list']){
 						$fields[] = $v['col'];
 						$values[] = ':'.$v['col'];
-						if(is_object($v['var']) && is_a($v['var'], 'Hypersistence'))
+						if(is_object($v['var']) && is_a($v['var'], 'Hypersistence')){
 							$bounds[':'.$v['col']] = $v['var']->getPkVar();
-						else if(is_object($v['var']) && is_a($v['var'], 'PercistenciaLazyLoad'))
+						}else if(is_object($v['var']) && is_a($v['var'], 'HypersistenceLazyLoad')){
 							$bounds[':'.$v['col']] = $v['var']->getHypersistenceLazyLoadValue();
-						else
+						}else{
 							$bounds[':'.$v['col']] = $v['var'];
+						}
 					}
 				}
 				
@@ -349,6 +414,7 @@ class Hypersistence {
 				}
 				
 				$sql = 'INSERT INTO '.$e->getTable().' ('.implode(', ', $fields).') VALUES('.  implode(', ', $values).')';
+				
 				if($stmt = $this->conn->prepare($sql)){
 					if($stmt->execute($bounds)){
 						$pk = &$e->getPkVar();
@@ -366,7 +432,7 @@ class Hypersistence {
 				$vars = $e->getVars();
 				$pk = 'id = :id';
 				foreach ($vars as $v){
-					if(!$v['pk']){
+					if(!$v['pk'] && !$v['list']){
 						$fields[] = $v['col'].' = :'.$v['col'];
 						if(is_object($v['var']) && is_a($v['var'], 'Hypersistence'))
 							$bounds[':'.$v['col']] = $v['var']->getPkVar();
@@ -410,7 +476,8 @@ class Hypersistence {
 	 */
 	public function getHypersistenceList(ResultSet $stmt){
 		$list = array();
-		$class = $this->entities[0]->getObject();
+		$class = $this->entities[0]->getClassName();
+		
 		while($result = $stmt->fetchObject()){
 			$obj = new $class();
 			$entities = &$obj->entities;
@@ -517,9 +584,11 @@ class HypersistenceResultSet{
 			
 			$vars = $e->getVars();
 			foreach ($vars as $v){
-				$fields[] = $e->getTable().'.'.$v['col'].' AS '.$e->getTable().'_'.$v['col'];
 				
-				if(!is_null($v['var'])){
+				if(!$v['list'])
+					$fields[] = $e->getTable().'.'.$v['col'].' AS '.$e->getTable().'_'.$v['col'];
+				
+				if(!is_null($v['var']) && !$v['list']){
 					if(is_object($v['var']) && is_a($v['var'], 'Hypersistence')){
 						$bounds[':'.$e->getTable().'_'.$v['col']] = $v['var']->getPkVar();
 						$like = '=';
@@ -530,10 +599,24 @@ class HypersistenceResultSet{
 						$bounds[':'.$e->getTable().'_'.$v['col']] = $v['var'];
 						$like = '=';
 					}else{
-						$bounds[':'.$e->getTable().'_'.$v['col']] = '%'.$v['var'].'%';
+						$bounds[':'.$e->getTable().'_'.$v['col']] = $v['var'];
 						$like = 'like';
 					}
 					$filter[] = $e->getTable().'.'.$v['col'].' '.$like.' :'.$e->getTable().'_'.$v['col'];
+				}if(!is_null($v['var'])){
+					if(isset($v['relTable']) && isset($v['colOther'])){
+						$joins[] = $v['relTable'];
+						$filter[] = $v['relTable'].'.'.$v['colOther'].' = '.$e->getTable().'.'.$e->getPkColumn();
+						$filter[] = $v['relTable'].'.'.$v['col'].' = :'.$v['relTable'].'_'.$v['col'];
+						if(is_object($v['var']) && is_a($v['var'], 'Hypersistence')){
+							$bounds[':'.$v['relTable'].'_'.$v['col']] = $v['var']->getPkVar();
+						}else if(is_object($v['var']) && is_a($v['var'], 'HypersistenceLazyLoad')){
+							$bounds[':'.$v['relTable'].'_'.$v['col']] = $v['var']->getHypersistenceLazyLoadValue();
+						}else{
+							$bounds[':'.$v['relTable'].'_'.$v['col']] = $v['var'];
+						}
+						$like = '=';
+					}
 				}
 				
 			}
@@ -571,6 +654,16 @@ class HypersistenceResultSet{
 			return false;
 		}
 		return false;
+	}
+	
+	public function fetchAll(){
+		$this->rows = 0;
+		$this->offset = 0;
+		$this->page = 0;
+		if($this->execute())
+			return $this->resultList;
+		else
+			return array();
 	}
 	
 	public function setRows($rows) {

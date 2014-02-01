@@ -3,6 +3,7 @@ require_once '../hypersistence/DB.php';
 require_once '../hypersistence/Hypersistence.php';
 require_once './Person.php';
 require_once './Book.php';
+require_once './Course.php';
 
 $p = new Person();
 $p->setName('Mateus Fornari');
@@ -20,6 +21,11 @@ $s->setEmail('mateusfornari@gmail.com');
 $s->setName('Mateus Fornari');
 $s->setNumber(123456);
 $s->save();
+
+$c = new Course();
+$c->setDescription('PHP Programming');
+$c->save();
+
 
 Hypersistence::commit();
 ?>
