@@ -3,6 +3,7 @@ require_once '../hypersistence/DB.php';
 require_once '../hypersistence/Hypersistence.php';
 require_once './Person.php';
 require_once './Book.php';
+require_once './Course.php';
 
 $p = new Person();
 $p->setName('Fornari');
@@ -26,6 +27,12 @@ foreach ($books as $b){
 	var_dump($b->getTitle());
 }
 
+$s = new Student();
+$s->setName('%mat%');
+$search = $s->search();
+foreach ($search->fetchAll() as $s){
+	var_dump($s->getId());
+}
 
 DB::getDBConnection()->commit();
 ?>

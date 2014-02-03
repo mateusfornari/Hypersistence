@@ -208,10 +208,6 @@ class HypersistenceEntity {
 		$this->vars[$index]['pk'] = $isPrimaryKey;
 		$this->vars[$index]['class'] = $className;
 		$this->vars[$index]['list'] = $isList;
-		if(!is_null($relationTable) && !is_null($dbColumnOther)){
-			$this->vars[$index]['relTable'] = $relationTable;
-			$this->vars[$index]['colOther'] = $dbColumnOther;
-		}
 		
 	}
 
@@ -506,11 +502,13 @@ class Hypersistence {
 			foreach ($entities as $e){
 				$vars = $e->getVars();
 				foreach ($vars as $v){
-					$column = $e->getTable().'_'.$v['col'];
-					if(!is_null($v['class']) && is_a($v['var'], 'HypersistenceLazyLoad')){
-						$v['var']->setHypersistenceLazyLoadValue($result->$column);
-					}else{
-						$v['var'] = $result->$column;
+					if(!$v['list']){
+						$column = $e->getTable().'_'.$v['col'];
+						if(!is_null($v['class']) && is_a($v['var'], 'HypersistenceLazyLoad')){
+							$v['var']->setHypersistenceLazyLoadValue($result->$column);
+						}else{
+							$v['var'] = $result->$column;
+						}
 					}
 				}
 			}
@@ -599,6 +597,7 @@ class HypersistenceResultSet{
 		$count = sizeof($this->entities);
 		for($i = 0; $i < $count; $i++){
 			$e = $this->entities[$i];
+			
 			$joins[] = $e->getTable();
 			
 			if($count > 1 && $i < $count - 1)
@@ -625,7 +624,7 @@ class HypersistenceResultSet{
 						$like = 'like';
 					}
 					$filter[] = $e->getTable().'.'.$v['col'].' '.$like.' :'.$e->getTable().'_'.$v['col'];
-				}if(!is_null($v['var'])){
+				}else if(!is_null($v['var'])){
 					if(isset($v['relTable']) && isset($v['colOther'])){
 						$joins[] = $v['relTable'];
 						$filter[] = $v['relTable'].'.'.$v['colOther'].' = '.$e->getTable().'.'.$e->getPkColumn();
