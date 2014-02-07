@@ -5,4 +5,5 @@
 	<username>root</username>
 	<password>root</password>
 	<database>test</database>
+	<charset>utf8</charset>
 </dbconf>
