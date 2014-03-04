@@ -270,11 +270,7 @@ class Hypersistence
      */
     private $entities = array();
 
-    /**
-     * @var DB
-     */
-    protected $conn = null;
-
+    
     /**
      * Binds the entity to its referred table in database.
      * @param mixed $object The instance of the entity object, use $this.
@@ -283,7 +279,6 @@ class Hypersistence
      */
     protected function bindEntity($className, $tableName, $foreignKey = null)
     {
-        $this->conn = &DB::getDBConnection();
         $this->entities[$className] = new HypersistenceEntity($className, $tableName, $foreignKey, $this);
         return $this->entities[$className];
     }
@@ -351,7 +346,7 @@ class Hypersistence
 
         $sql = 'SELECT ' . implode(', ', $fields) . ' FROM ' . implode(', ', $joins) . ' WHERE ' . implode(' AND ', $filter);
 
-        if ($stmt = $this->conn->prepare($sql)) {
+        if ($stmt = DB::getDBConnection()->prepare($sql)) {
             if ($stmt->execute($bounds) && $stmt->rowCount() > 0) {
                 $result = $stmt->fetchObject();
                 foreach ($this->entities as $e) {
@@ -398,7 +393,7 @@ class Hypersistence
 
         $sql = 'DELETE ' . implode(', ', $joins) . ' FROM ' . implode(', ', $joins) . ' WHERE ' . implode(' AND ', $filter);
 
-        if ($stmt = $this->conn->prepare($sql)) {
+        if ($stmt = DB::getDBConnection()->prepare($sql)) {
             if ($stmt->execute($bounds)) {
                 return true;
             }
@@ -444,11 +439,11 @@ class Hypersistence
 
                 $sql = 'INSERT INTO ' . $e->getTable() . ' (' . implode(', ', $fields) . ') VALUES(' . implode(', ', $values) . ')';
 
-                if ($stmt = $this->conn->prepare($sql)) {
+                if ($stmt = DB::getDBConnection()->prepare($sql)) {
                     if ($stmt->execute($bounds)) {
                         $pk = &$e->getPkVar();
                         if (is_null($pk)) {
-                            $pk = $this->conn->lastInsertId();
+                            $pk = DB::getDBConnection()->lastInsertId();
                             unset($pk);
                         }
                     } else {
@@ -478,7 +473,7 @@ class Hypersistence
 
                 $sql = 'UPDATE ' . $e->getTable() . ' SET ' . implode(', ', $fields) . ' WHERE ' . $pk;
 
-                if ($stmt = $this->conn->prepare($sql)) {
+                if ($stmt = DB::getDBConnection()->prepare($sql)) {
                     if (!$stmt->execute($bounds)) {
                         return false;
                     }
@@ -499,7 +494,7 @@ class Hypersistence
                     $bounds[':colOther'] = $object->getPkVar();
                     $sql = "INSERT INTO $relationTable ($v[col], $v[colOther]) VALUES(:col, :colOther)";
 
-                    if ($stmt = $this->conn->prepare($sql)) {
+                    if ($stmt = DB::getDBConnection()->prepare($sql)) {
                         return $stmt->execute($bounds);
                     }
                 }
@@ -516,7 +511,7 @@ class Hypersistence
     public function search()
     {
         $this->orderEntities();
-        return new HypersistenceResultSet($this, $this->entities, $this->conn);
+        return new HypersistenceResultSet($this, $this->entities);
     }
 
     /**
@@ -587,7 +582,8 @@ class Hypersistence
     {
         return DB::getDBConnection()->rollBack();
     }
-
+    
+    
 }
 
 class HypersistenceResultSet
@@ -599,7 +595,6 @@ class HypersistenceResultSet
     private $entities;
     private $totalRows;
     private $totalPages;
-    private $conn;
     private $resultList;
 
     /**
@@ -607,7 +602,7 @@ class HypersistenceResultSet
      */
     private $persistenciaObject;
 
-    public function __construct(&$persistenciaObject, &$entities, $conn)
+    public function __construct(&$persistenciaObject, &$entities)
     {
         $this->rows = 0;
         $this->offset = 0;
@@ -615,7 +610,6 @@ class HypersistenceResultSet
         $this->entities = &$entities;
         $this->totalRows = 0;
         $this->totalPages = 0;
-        $this->conn = $conn;
         $this->resultList = array();
         $this->persistenciaObject = &$persistenciaObject;
     }
@@ -687,7 +681,7 @@ class HypersistenceResultSet
 
         $sql = 'SELECT COUNT(*) AS total FROM ' . implode(', ', $joins) . $where;
 
-        if ($stmt = $this->conn->prepare($sql)) {
+        if ($stmt = DB::getDBConnection()->prepare($sql)) {
             if ($stmt->execute($bounds) && $stmt->rowCount() > 0) {
                 $result = $stmt->fetchObject();
                 $this->totalRows = $result->total;
@@ -704,7 +698,7 @@ class HypersistenceResultSet
 
         $sql = 'SELECT ' . implode(', ', $fields) . ' FROM ' . implode(', ', $joins) . $where . ' LIMIT :limit OFFSET :offset';
 
-        if ($stmt = $this->conn->prepare($sql)) {
+        if ($stmt = DB::getDBConnection()->prepare($sql)) {
             if ($stmt->execute($bounds) && $stmt->rowCount() > 0) {
                 $this->resultList = $this->persistenciaObject->getHypersistenceList($stmt);
                 return true;
