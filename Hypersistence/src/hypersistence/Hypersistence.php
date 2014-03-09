@@ -367,6 +367,44 @@ class Hypersistence
         }
         return false;
     }
+    /**
+     * Verify if exists a register with the primary key of the object.
+     * @return boolean
+     */
+    public function exists()
+    {
+        $this->orderEntities();
+        $joins = array();
+        $filter = array();
+        $bounds = array();
+        $fields = array();
+        $count = sizeof($this->entities);
+        for ($i = 0; $i < $count; $i++) {
+            $e = $this->entities[$i];
+            $joins[] = $e->getTable();
+            if ($i == 0) {
+                $filter[] = $e->getTable() . '.' . $e->getPkColumn() . ' = :' . $e->getTable() . '_' . $e->getPkColumn();
+                $bounds[':' . $e->getTable() . '_' . $e->getPkColumn()] = $e->getPkVar();
+            }
+            if ($count > 1 && $i < $count - 1)
+                $filter[] = $e->getTable() . '.' . $e->getFk() . ' = ' . $this->entities[$i + 1]->getTable() . '.' . $this->entities[$i + 1]->getPkColumn();
+
+            $vars = $e->getVars();
+            foreach ($vars as $v) {
+                if (!is_null($v['col']) && !$v['list'])
+                    $fields[] = $e->getTable() . '.' . $v['col'] . ' AS ' . $e->getTable() . '_' . $v['col'];
+            }
+        }
+        
+        $sql = 'SELECT ' . implode(', ', $fields) . ' FROM ' . implode(', ', $joins) . ' WHERE ' . implode(' AND ', $filter);
+
+        if ($stmt = DB::getDBConnection()->prepare($sql)) {
+            if ($stmt->execute($bounds) && $stmt->rowCount() > 0) {
+                return true;
+            }
+        }
+        return false;
+    }
 
     /**
      * Delete the object from database.
@@ -415,7 +453,7 @@ class Hypersistence
             $fields = array();
             $values = array();
             $bounds = array();
-            if (is_null($e->getPkVar())) {
+            if (is_null($e->getPkVar()) || !$e->getObject()->exists()) {
                 $vars = $e->getVars();
                 foreach ($vars as $v) {
                     if (!$v['pk'] && !$v['list']) {
