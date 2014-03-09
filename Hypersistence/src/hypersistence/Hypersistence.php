@@ -343,7 +343,7 @@ class Hypersistence
                     $fields[] = $e->getTable() . '.' . $v['col'] . ' AS ' . $e->getTable() . '_' . $v['col'];
             }
         }
-
+        
         $sql = 'SELECT ' . implode(', ', $fields) . ' FROM ' . implode(', ', $joins) . ' WHERE ' . implode(' AND ', $filter);
 
         if ($stmt = DB::getDBConnection()->prepare($sql)) {
@@ -415,7 +415,7 @@ class Hypersistence
             $fields = array();
             $values = array();
             $bounds = array();
-            if (is_null($e->getPkVar()) || !$e->getObject()->load()) {
+            if (is_null($e->getPkVar())) {
                 $vars = $e->getVars();
                 foreach ($vars as $v) {
                     if (!$v['pk'] && !$v['list']) {
@@ -470,7 +470,7 @@ class Hypersistence
                         $bounds[':' . $v['col']] = $v['var'];
                     }
                 }
-
+                
                 $sql = 'UPDATE ' . $e->getTable() . ' SET ' . implode(', ', $fields) . ' WHERE ' . $pk;
 
                 if ($stmt = DB::getDBConnection()->prepare($sql)) {
@@ -645,20 +645,29 @@ class HypersistenceResultSet
                     $fields[] = $e->getTable() . '.' . $v['col'] . ' AS ' . $e->getTable() . '_' . $v['col'];
 
                 if (!is_null($v['var']) && !$v['list']) {
+                    $hasFilter = false;
                     if (is_object($v['var']) && $v['var'] instanceof Hypersistence) {
                         $bounds[':' . $e->getTable() . '_' . $v['col']] = $v['var']->getPkVar();
                         $like = '=';
+                        $hasFilter = true;
                     } elseif (is_object($v['var']) && $v['var'] instanceof HypersistenceLazyLoad) {
-                        $bounds[':' . $e->getTable() . '_' . $v['col']] = $v['var']->getHypersistenceLazyLoadValue();
-                        $like = '=';
+                        if(!is_null($v['var']->getHypersistenceLazyLoadValue())){
+                            $bounds[':' . $e->getTable() . '_' . $v['col']] = $v['var']->getHypersistenceLazyLoadValue();
+                            $like = '=';
+                            $hasFilter = true;
+                        }
                     } elseif (is_numeric($v['var'])) {
                         $bounds[':' . $e->getTable() . '_' . $v['col']] = $v['var'];
                         $like = '=';
+                        $hasFilter = true;
                     } else {
                         $bounds[':' . $e->getTable() . '_' . $v['col']] = $v['var'];
                         $like = 'like';
+                        $hasFilter = true;
                     }
-                    $filter[] = $e->getTable() . '.' . $v['col'] . ' ' . $like . ' :' . $e->getTable() . '_' . $v['col'];
+                    if($hasFilter){
+                        $filter[] = $e->getTable() . '.' . $v['col'] . ' ' . $like . ' :' . $e->getTable() . '_' . $v['col'];
+                    }
                 } elseif (!is_null($v['var'])) {
                     if (isset($v['relTable']) && isset($v['colOther'])) {
                         $joins[] = $v['relTable'];
