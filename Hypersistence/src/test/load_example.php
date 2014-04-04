@@ -9,16 +9,17 @@ require_once './Course.php';
 
 $p = new Person(1);
 $p->load();
-var_dump($p->getName());
+//var_dump($p);
 foreach ($p->getBooks()->fetchAll() as $r){
 	echo "{$r->getTitle()}\n";
 }
-
+exit();
 
 $b = new Book(3);
 $b->load();
-var_dump($b->getTitle());
-
+var_dump($b->getAuthor()->load());
+var_dump($b->getAuthor()->getName());
+exit();
 $s = new Student(47);
 $s->load();
 var_dump($s->getName());

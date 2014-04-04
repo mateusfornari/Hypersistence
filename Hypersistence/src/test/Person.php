@@ -12,11 +12,11 @@ class Person extends Hypersistence{
 		$this->name = $name;
 		$this->email = $email;
 		
-		$e = $this->bindEntity('Person', 'person', null);
-		$e->bindPk($this->id, 'id');
-		$e->bindVar($this->name, 'name');
-		$e->bindVar($this->email, 'email');
-		$e->bindOneToMany($this->books, 'person_id', 'Book');
+		$this->bindEntity('Person', 'person', null);
+		$this->bindPk($this->id, 'id');
+		$this->bindVar($this->name, 'name');
+		$this->bindVar($this->email, 'email');
+		$this->bindOneToMany($this->books, 'person_id', 'Book');
 	}
 	
 	public function getId() {
@@ -66,10 +66,10 @@ class Student extends Person{
 	function __construct($id = null, $name = null, $email = null, $number = null) {
 		$this->number = $number;
 		parent::__construct($id, $name, $email);
-		$e = $this->bindEntity('Student', 'student', 'id');
-		$e->bindPk($this->id, 'id');
-		$e->bindVar($this->number, 'number');
-		$e->bindManyToMany($this->courses, 'student_course', 'student_id', 'course_id', 'Course');
+		$this->bindEntity('Student', 'student', 'id');
+		$this->bindPk($this->id, 'id');
+		$this->bindVar($this->number, 'number');
+		$this->bindManyToMany($this->courses, 'student_course', 'student_id', 'course_id', 'Course');
 	}
 	public function getNumber() {
 		return $this->number;
