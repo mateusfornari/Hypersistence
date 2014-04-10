@@ -159,6 +159,8 @@ class HypersistenceEntity
         $this->vars[$index]['pk'] = $isPrimaryKey;
         $this->vars[$index]['class'] = $className;
         $this->vars[$index]['list'] = $isList;
+        $this->vars[$index]['relTable'] = $relationTable;
+        $this->vars[$index]['colOther'] = $dbColumnOther;
     }
 
     public function getVars()
@@ -519,7 +521,25 @@ class Hypersistence
                     $bounds[':col'] = $this->getPkVar();
                     $bounds[':colOther'] = $object->getPkVar();
                     $sql = "INSERT INTO $relationTable ($v[col], $v[colOther]) VALUES(:col, :colOther)";
-
+                    
+                    if ($stmt = DB::getDBConnection()->prepare($sql)) {
+                        return $stmt->execute($bounds);
+                    }
+                }
+            }
+        }
+        throw new Exception('No many to many bounds found!');
+        return false;
+    }
+    
+    public function deleteManyToManyRelationTo(Hypersistence $object, $relationTable)
+    {
+        foreach ($this->entities as $e) {
+            foreach ($e->getVars() as $v) {
+                if (isset($v['relTable']) && $v['relTable'] == $relationTable) {
+                    $bounds[':col'] = $this->getPkVar();
+                    $bounds[':colOther'] = $object->getPkVar();
+                    $sql = "DELETE FROM $relationTable WHERE $v[col] = :col AND $v[colOther] = :colOther";
                     if ($stmt = DB::getDBConnection()->prepare($sql)) {
                         return $stmt->execute($bounds);
                     }
@@ -688,7 +708,7 @@ class HypersistenceResultSet
                         $like = '=';
                         $hasFilter = true;
                     } else {
-                        $bounds[':' . $e->getTable() . '_' . $v['col']] = $v['var'];
+                        $bounds[':' . $e->getTable() . '_' . $v['col']] = '%'.$v['var'].'%';
                         $like = 'like';
                         $hasFilter = true;
                     }
@@ -696,7 +716,7 @@ class HypersistenceResultSet
                         $filter[] = $e->getTable() . '.' . $v['col'] . ' ' . $like . ' :' . $e->getTable() . '_' . $v['col'];
                     }
                 } elseif (!is_null($v['var'])) {
-                    if (isset($v['relTable']) && isset($v['colOther'])) {
+                    if (isset($v['relTable']) && isset($v['colOther']) && !$v['var'] instanceof HypersistenceResultSet) {
                         $joins[] = $v['relTable'];
                         $filter[] = $v['relTable'] . '.' . $v['colOther'] . ' = ' . $e->getTable() . '.' . $e->getPkColumn();
                         $filter[] = $v['relTable'] . '.' . $v['col'] . ' = :' . $v['relTable'] . '_' . $v['col'];
