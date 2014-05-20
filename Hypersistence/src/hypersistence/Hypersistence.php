@@ -279,8 +279,8 @@ class Hypersistence
         $count = sizeof($classes);
         for ($i = 0; $i < $count; $i++) {
             if (!is_numeric($classes[$i])) {
-                $rc1 = new ReflectionClass($classes[$i]);
-                for ($j = 1; $j < $count; $j++) {
+                for ($j = $i+1; $j < $count; $j++) {
+                    $rc1 = new ReflectionClass($classes[$i]);
                     $rc2 = new ReflectionClass($classes[$j]);
                     if ($rc2->isSubclassOf($rc1->name)) {
                         $aux = $classes[$i];
@@ -332,7 +332,6 @@ class Hypersistence
         }
         
         $sql = 'SELECT ' . implode(', ', $fields) . ' FROM ' . implode(', ', $joins) . ' WHERE ' . implode(' AND ', $filter);
-
         if ($stmt = DB::getDBConnection()->prepare($sql)) {
             if ($stmt->execute($bounds) && $stmt->rowCount() > 0) {
                 $result = $stmt->fetchObject();
@@ -497,6 +496,10 @@ class Hypersistence
                         $pk = $v['col'] . ' = :' . $v['col'];
                         $bounds[':' . $v['col']] = $v['var'];
                     }
+                }
+                
+                if(!count($fields)){
+                    continue;
                 }
                 
                 $sql = 'UPDATE ' . $e->getTable() . ' SET ' . implode(', ', $fields) . ' WHERE ' . $pk;
