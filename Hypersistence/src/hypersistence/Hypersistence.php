@@ -304,7 +304,7 @@ class Hypersistence
 
     /**
      * Loads data from database and populates the object.
-     * @return boolean
+     * @return Hypersistence
      */
     public function load()
     {
@@ -557,10 +557,10 @@ class Hypersistence
      * 
      * @return HypersistenceResultSet
      */
-    public function search()
+    public function search($orderBy = null)
     {
         $this->orderEntities();
-        return new HypersistenceResultSet($this, $this->entities);
+        return new HypersistenceResultSet($this, $this->entities, $orderBy);
     }
 
     /**
@@ -652,13 +652,14 @@ class HypersistenceResultSet
     private $totalRows;
     private $totalPages;
     private $resultList;
+    private $orderBy;
 
     /**
      * @var Hypersistence
      */
     private $persistenciaObject;
 
-    public function __construct(&$persistenciaObject, &$entities)
+    public function __construct(&$persistenciaObject, &$entities, $orderBy)
     {
         $this->rows = 0;
         $this->offset = 0;
@@ -668,6 +669,7 @@ class HypersistenceResultSet
         $this->totalPages = 0;
         $this->resultList = array();
         $this->persistenciaObject = &$persistenciaObject;
+        $this->orderBy = $orderBy;
     }
 
     /**
@@ -748,12 +750,18 @@ class HypersistenceResultSet
             }
         }
 
+        if($this->orderBy){
+            $orderBy = " ORDER BY $this->orderBy";
+        }else{
+            $orderBy = '';
+        }
+        
         $offset = $this->page > 0 ? ($this->page - 1) * $this->rows : $this->offset;
         $bounds[':offset'] = array($offset, PDO::PARAM_INT);
 
         $bounds[':limit'] = array(intval($this->rows > 0 ? $this->rows : $this->totalRows), PDO::PARAM_INT);
 
-        $sql = 'SELECT ' . implode(', ', $fields) . ' FROM ' . implode(', ', $joins) . $where . ' LIMIT :limit OFFSET :offset';
+        $sql = 'SELECT ' . implode(', ', $fields) . ' FROM ' . implode(', ', $joins) . $where . $orderBy . ' LIMIT :limit OFFSET :offset';
         
         if ($stmt = DB::getDBConnection()->prepare($sql)) {
             if ($stmt->execute($bounds) && $stmt->rowCount() > 0) {
@@ -768,11 +776,12 @@ class HypersistenceResultSet
         return false;
     }
 
-    public function fetchAll()
+    public function fetchAll($orderBy = '')
     {
         $this->rows = 0;
         $this->offset = 0;
         $this->page = 0;
+        $this->orderBy = $orderBy;
         if ($this->execute())
             return $this->resultList;
         else
