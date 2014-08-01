@@ -3,7 +3,7 @@ Hypersistence
 
 <h2>Atention!</h2>
 This framework is being developed!
-<strong>I recomend to use the new version (<a href="https://github.com/mateusfornari/Hypersistence2.0">Hypersistence2.0</a>)!</strong>
+<strong>I recomend to use the new version (<a href="https://github.com/mateusfornari/hypersistence-alpha">Hypersistence2.0</a>)!</strong>
 
 PHP Object Oriented persistence framework.
 
